@@ -14,7 +14,7 @@ param(
 )
 
 $ErrorActionPreference = 'STOP'
-$git_url = 'https://github.com/majkinetor/au.git'
+$git_url = 'https://github.com/pauby/capu.git'
 
 if (!(gcm git -ea 0)) { throw 'Git must be installed' }
 [version]$git_version = (git --version) -replace 'git|version|\.windows'
