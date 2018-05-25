@@ -1,7 +1,30 @@
-/_build
-/chocolatey/tools/AU
-/chocolatey/tools/install.ps1
-/chocolatey/*.nupkg
+/chocolatey
 /vars.ps1
-/tests/.vscode/launch.json
 /.vscode/launch.json
+
+
+# Windows image file caches
+Thumbs.db
+ehthumbs.db
+
+# Folder config file
+Desktop.ini
+
+# Recycle Bin used on file shares
+$RECYCLE.BIN/
+
+# Windows Installer files
+*.cab
+*.msi
+*.msm
+*.msp
+
+# Windows shortcuts
+*.lnk
+
+*-test*
+*.ignore
+.git
+output/
+help/
+[0-9].*/
