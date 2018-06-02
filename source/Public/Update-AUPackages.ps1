@@ -68,6 +68,9 @@ function Update-AUPackages {
         [switch] $NoPlugins = $global:au_NoPlugins
     )
 
+    # for use when importing this module inside the job
+    $thisModulePath = (Get-Module -Name capu).path
+
     $startTime = Get-Date
 
     if (!$Options.Threads)      { $Options.Threads       = 10 }
@@ -171,9 +174,13 @@ function Update-AUPackages {
 
             $pkg = $null #test double report when it fails
             try {
+                Import-Module -Name $using:thisModulePath
                 $pkg = ./update.ps1 6> $out
             } catch {
-                $pkg.Error = $_
+                # if an exception is thrown $pkg has been set to $null so cannot
+                # add / access an Error key and throws another error. Commented
+                # out until we can refactor the code.
+                # $pkg.Error = $_ 
             }
             if (!$pkg) { throw "'$using:package_name' update script returned nothing" }
             if (($pkg -eq 'ignore') -or ($pkg[-1] -eq 'ignore')) { return 'ignore' }
