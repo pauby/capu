@@ -68,6 +68,9 @@ function Update-AUPackages {
         [switch] $NoPlugins = $global:au_NoPlugins
     )
 
+    # for use when importing this module inside the job
+    $thisModulePath = (Get-Module -Name capu).path
+
     $startTime = Get-Date
 
     if (!$Options.Threads)      { $Options.Threads       = 10 }
@@ -81,7 +84,7 @@ function Update-AUPackages {
 
     $tmp_dir = "$ENV:Temp\chocolatey\au"
     mkdir -ea 0 $tmp_dir | Out-Null
-    ls $tmp_dir | ? PSIsContainer -eq $false | rm   #clear tmp dir files
+    Get-ChildItem $tmp_dir | Where-Object PSIsContainer -eq $false | Remove-Item   #clear tmp dir files
 
     $aup = Get-AUPackages $Name
     Write-Host 'Updating' $aup.Length  'automatic packages at' $($startTime.ToString("s") -replace 'T',' ') $(if ($Options.Force) { "(forced)" } else {})
@@ -97,7 +100,7 @@ function Update-AUPackages {
     while( $p -ne $aup.length ) {
 
         # Check for completed jobs
-        foreach ($job in (Get-Job | ? state -ne 'Running')) {
+        foreach ($job in (Get-Job | Where-Object state -ne 'Running')) {
             $p += 1
 
             if ( 'Stopped', 'Failed', 'Completed' -notcontains $job.State) { 
@@ -107,7 +110,7 @@ function Update-AUPackages {
                 Write-Verbose ($job.State + ' ' + $job.Name)
 
                 $pkg = $null
-                Receive-Job $job | set pkg
+                Receive-Job $job | Set-Variable pkg
                 Remove-Job $job
 
                 $ignored = $pkg -eq 'ignore'
@@ -115,7 +118,7 @@ function Update-AUPackages {
                     $pkg = [AUPackage]::new( (Get-AuPackages $($job.Name)) )
 
                     if ($ignored) {
-                        $pkg.Result = "ignored`r`n`r`n" + (gc "$tmp_dir\$($pkg.Name)" -Raw -ea 0)
+                        $pkg.Result = "ignored`r`n`r`n" + (Get-Content "$tmp_dir\$($pkg.Name)" -Raw -ea 0)
                     } elseif ($job.State -eq 'Stopped') {
                         $pkg.Error = "Job termintated due to the $($Options.UpdateTimeout)s UpdateTimeout"
                     } else {
@@ -131,7 +134,7 @@ function Update-AUPackages {
                 }
                 if ($pkg.Error) {
                     $message = "$($pkg.Name) ERROR: "
-                    $message += $pkg.Error.ToString() -split "`n" | % { "`n" + ' '*5 + $_ }
+                    $message += $pkg.Error.ToString() -split "`n" | ForEach-Object { "`n" + ' '*5 + $_ }
                 }
                 Write-Host '  ' $message
 
@@ -140,9 +143,9 @@ function Update-AUPackages {
         }
 
         # Sleep a bit and check for running tasks update timeout
-        $job_count = Get-Job | measure | % count
+        $job_count = Get-Job | Measure-Object | ForEach-Object count
         if (($job_count -eq $Options.Threads) -or ($j -eq $aup.Length)) {
-            sleep 1
+            Start-Sleep 1
             foreach ($job in $(Get-Job -State Running)) {
                $elapsed = ((get-date) - $job.PSBeginTime).TotalSeconds
                if ($elapsed -ge $Options.UpdateTimeout) { Stop-Job $job }
@@ -157,7 +160,7 @@ function Update-AUPackages {
         Start-Job -Name $package_name {         #TODO: fix laxxed variables in job for BE and AE
             $Options = $using:Options
 
-            cd $using:package_path
+            Set-Location $using:package_path
             $out = "$using:tmp_dir\$using:package_name"
 
             $global:au_Timeout = $Options.Timeout
@@ -171,9 +174,13 @@ function Update-AUPackages {
 
             $pkg = $null #test double report when it fails
             try {
+                Import-Module -Name $using:thisModulePath
                 $pkg = ./update.ps1 6> $out
             } catch {
-                $pkg.Error = $_
+                # if an exception is thrown $pkg has been set to $null so cannot
+                # add / access an Error key and throws another error. Commented
+                # out until we can refactor the code.
+                # $pkg.Error = $_ 
             }
             if (!$pkg) { throw "'$using:package_name' update script returned nothing" }
             if (($pkg -eq 'ignore') -or ($pkg[-1] -eq 'ignore')) { return 'ignore' }
@@ -187,7 +194,7 @@ function Update-AUPackages {
                 if ($LastExitCode -eq 0) {
                     $pkg.Pushed = $true
                 } else {
-                    $pkg.Error = "Push ERROR`n" + ($r | select -skip 1)
+                    $pkg.Error = "Push ERROR`n" + ($r | Select-Object -skip 1)
                 }
             }
 
@@ -199,7 +206,7 @@ function Update-AUPackages {
             $pkg
         } | Out-Null
     }
-    $result = $result | sort Name
+    $result = $result | Sort-Object Name
 
     $info = get_info
     run_plugins
@@ -214,7 +221,7 @@ function Update-AUPackages {
 function run_plugins() {
     if ($NoPlugins) { return }
 
-    rm -Force -Recurse $tmp_dir\plugins -ea Ignore
+    Remove-Item -Force -Recurse $tmp_dir\plugins -ea Ignore
     mkdir -Force $tmp_dir\plugins | Out-Null
     foreach ($key in $Options.Keys) {
         $params = $Options.$key
@@ -230,8 +237,8 @@ function run_plugins() {
 
         try {
             Write-Host "`nRunning $key"
-            & $plugin_path $Info @params *>&1 | tee $tmp_dir\plugins\$key | Write-Host
-            $info.plugin_results.$key += gc $tmp_dir\plugins\$key -ea ignore
+            & $plugin_path $Info @params *>&1 | Tee-Object $tmp_dir\plugins\$key | Write-Host
+            $info.plugin_results.$key += Get-Content $tmp_dir\plugins\$key -ea ignore
         } catch {
             $err_lines = $_.ToString() -split "`n"
             Write-Host "  ERROR: " $(foreach ($line in $err_lines) { "`n" + ' '*4 + $line })
@@ -242,28 +249,28 @@ function run_plugins() {
 
 
 function get_info {
-    $errors = $result | ? { $_.Error }
+    $errors = $result | Where-Object { $_.Error }
     $info = [PSCustomObject]@{
         result = [PSCustomObject]@{
             all     = $result
             errors  = $errors
-            ok      = $result | ? { !$_.Error }
-            pushed  = $result | ? Pushed
-            updated = $result | ? Updated
+            ok      = $result | Where-Object { !$_.Error }
+            pushed  = $result | Where-Object Pushed
+            updated = $result | Where-Object Updated
         }
 
         error_count = [PSCustomObject]@{
-            update  = $errors | ? {!$_.Updated} | measure | % count
-            push    = $errors | ? {$_.Updated -and !$_.Pushed} | measure | % count
-            total   = $errors | measure | % count
+            update  = $errors | Where-Object {!$_.Updated} | Measure-Object | ForEach-Object count
+            push    = $errors | Where-Object {$_.Updated -and !$_.Pushed} | Measure-Object | ForEach-Object count
+            total   = $errors | Measure-Object | ForEach-Object count
         }
         error_info  = ''
 
         packages  = $aup
         startTime = $startTime
         minutes   = ((Get-Date) - $startTime).TotalMinutes.ToString('#.##')
-        pushed    = $result | ? Pushed  | measure | % count
-        updated   = $result | ? Updated | measure | % count
+        pushed    = $result | Where-Object Pushed  | Measure-Object | ForEach-Object count
+        updated   = $result | Where-Object Updated | Measure-Object | ForEach-Object count
         stats     = ''
         options   = $Options
         plugin_results = @{}
@@ -272,7 +279,7 @@ function get_info {
     $info.PSObject.TypeNames.Insert(0, 'AUInfo')
 
     $info.stats = get-stats
-    $info.error_info = $errors | % {
+    $info.error_info = $errors | ForEach-Object {
         "`nPackage: " + $_.Name + "`n"
         $_.Error
     }

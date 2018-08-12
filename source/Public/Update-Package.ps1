@@ -94,7 +94,7 @@ function Update-Package {
 
     function check_urls() {
         "URL check" | result
-        $Latest.Keys | ? {$_ -like 'url*' } | % {
+        $Latest.Keys | Where-Object {$_ -like 'url*' } | ForEach-Object {
             $url = $Latest[ $_ ]
             if ($res = check_url $url) { throw "${res}:$url" } else { "  $url" | result }
         }
@@ -126,9 +126,9 @@ function Update-Package {
                         $filePath = "$_" -replace 'au_break: '
                         if (!(Test-Path $filePath)) { throw "Can't find file path to checksum" }
 
-                        $item = gi $filePath
+                        $item = Get-Item $filePath
                         $type = if ($global:Latest.ContainsKey('ChecksumType' + $a)) { $global:Latest.Item('ChecksumType' + $a) } else { 'sha256' }
-                        $hash = (Get-FileHash $item -Algorithm $type | % Hash).ToLowerInvariant()
+                        $hash = (Get-FileHash $item -Algorithm $type | ForEach-Object Hash).ToLowerInvariant()
 
                         if (!$global:Latest.ContainsKey('ChecksumType' + $a)) { $global:Latest.Add('ChecksumType' + $a, $type) }
                         if (!$global:Latest.ContainsKey('Checksum' + $a)) {
@@ -145,20 +145,20 @@ function Update-Package {
         }
 
         function fix_choco {
-            Sleep -Milliseconds (Get-Random 500) #reduce probability multiple updateall threads entering here at the same time (#29)
+            Start-Sleep -Milliseconds (Get-Random 500) #reduce probability multiple updateall threads entering here at the same time (#29)
 
             # Copy choco modules once a day
             if (Test-Path $choco_tmp_path) {
-                $ct = gi $choco_tmp_path | % creationtime
-                if (((get-date) - $ct).Days -gt 1) { rm -recurse -force $choco_tmp_path } else { Write-Verbose 'Chocolatey copy is recent, aborting monkey patching'; return }
+                $ct = Get-Item $choco_tmp_path | ForEach-Object creationtime
+                if (((get-date) - $ct).Days -gt 1) { Remove-Item -recurse -force $choco_tmp_path } else { Write-Verbose 'Chocolatey copy is recent, aborting monkey patching'; return }
             }
 
             Write-Verbose "Monkey patching chocolatey in: '$choco_tmp_path'"
-            cp -recurse -force $Env:ChocolateyInstall\helpers $choco_tmp_path\helpers
-            if (Test-Path $Env:ChocolateyInstall\extensions) { cp -recurse -force $Env:ChocolateyInstall\extensions $choco_tmp_path\extensions }
+            Copy-Item -recurse -force $Env:ChocolateyInstall\helpers $choco_tmp_path\helpers
+            if (Test-Path $Env:ChocolateyInstall\extensions) { Copy-Item -recurse -force $Env:ChocolateyInstall\extensions $choco_tmp_path\extensions }
 
             $fun_path = "$choco_tmp_path\helpers\functions\Get-ChocolateyWebFile.ps1"
-            (gc $fun_path) -replace '^\s+return \$fileFullPath\s*$', '  throw "au_break: $fileFullPath"' | sc $fun_path -ea ignore
+            (Get-Content $fun_path) -replace '^\s+return \$fileFullPath\s*$', '  throw "au_break: $fileFullPath"' | Set-Content $fun_path -ea ignore
         }
 
         "Automatic checksum started" | result
@@ -213,7 +213,7 @@ function Update-Package {
     function update_files( [switch]$SkipNuspecFile )
     {
         'Updating files' | result
-        '  $Latest data:' | result;  ($global:Latest.keys | sort | % { "    {0,-15} ({1})    {2}" -f $_, $global:Latest[$_].GetType().Name, $global:Latest[$_] }) | result; '' | result
+        '  $Latest data:' | result;  ($global:Latest.keys | Sort-Object | ForEach-Object { "    {0,-15} ({1})    {2}" -f $_, $global:Latest[$_].GetType().Name, $global:Latest[$_] }) | result; '' | result
 
         if (!$SkipNuspecFile) {
             "  $(Split-Path $package.NuspecPath -Leaf)" | result
@@ -236,12 +236,12 @@ function Update-Package {
         }
 
         $sr = au_SearchReplace
-        $sr.Keys | % {
+        $sr.Keys | ForEach-Object {
             $fileName = $_
             "  $fileName" | result
 
-            $fileContent = gc $fileName
-            $sr[ $fileName ].GetEnumerator() | % {
+            $fileContent = Get-Content $fileName
+            $sr[ $fileName ].GetEnumerator() | ForEach-Object {
                 ('    {0} = {1} ' -f $_.name, $_.value) | result
                 if (!($fileContent -match $_.name)) { throw "Search pattern not found: '$($_.name)'" }
                 $fileContent = $fileContent -replace $_.name, $_.value
@@ -268,7 +268,7 @@ function Update-Package {
     function result() {
         if ($global:Silent) { return }
 
-        $input | % {
+        $input | ForEach-Object {
             $package.Result += $_
             if (!$NoHostOutput) { Write-Host $_ }
         }
@@ -280,17 +280,17 @@ function Update-Package {
     } else { Write-Verbose 'Running inside the script' }
 
     # Assign parameters from global variables with the prefix `au_` if they are bound
-    (gcm $PSCmdlet.MyInvocation.InvocationName).Parameters.Keys | % {
+    (Get-Command $PSCmdlet.MyInvocation.InvocationName).Parameters.Keys | ForEach-Object {
         if ($PSBoundParameters.Keys -contains $_) { return }
-        $value = gv "au_$_" -Scope Global -ea Ignore | % Value
+        $value = Get-Variable "au_$_" -Scope Global -ea Ignore | ForEach-Object Value
         if ($value -ne $null) {
-            sv $_ $value
+            Set-Variable $_ $value
             Write-Verbose "Parameter $_ set from global variable au_${_}: $value"
         }
     }
 
     $package = [AUPackage]::new( $pwd )
-    if ($Result) { sv -Scope Global -Name $Result -Value $package }
+    if ($Result) { Set-Variable -Scope Global -Name $Result -Value $package }
 
     $global:Latest = @{PackageName = $package.Name}
     $global:Latest.NuspecVersion = $package.NuspecVersion
@@ -303,13 +303,13 @@ function Update-Package {
     $module = $MyInvocation.MyCommand.ScriptBlock.Module
     "{0} - checking updates using {1} version {2}" -f $package.Name, $module.Name, $module.Version | result
     try {
-        $res = au_GetLatest | select -Last 1
+        $res = au_GetLatest | Select-Object -Last 1
         if ($res -eq $null) { throw 'au_GetLatest returned nothing' }
 
         $res_type = $res.GetType()
         if ($res_type -ne [HashTable]) { throw "au_GetLatest doesn't return a HashTable result but $res_type" }
 
-        $res.Keys | % { $global:Latest.Remove($_) }
+        $res.Keys | ForEach-Object { $global:Latest.Remove($_) }
         $global:Latest += $res
         if ($global:au_Force) { $Force = $true }
     } catch {
@@ -343,7 +343,7 @@ function Update-Package {
 
     'New version is available' | result
 
-    $match_url = ($Latest.Keys | ? { $_ -match '^URL*' } | select -First 1 | % { $Latest[$_] } | split-Path -Leaf) -match '(?<=\.)[^.]+$'
+    $match_url = ($Latest.Keys | Where-Object { $_ -match '^URL*' } | Select-Object -First 1 | ForEach-Object { $Latest[$_] } | split-Path -Leaf) -match '(?<=\.)[^.]+$'
     if ($match_url -and !$Latest.FileType) { $Latest.FileType = $Matches[0] }
 
     if ($ChecksumFor -ne 'none') { get_checksum } else { 'Automatic checksum skipped' | result }

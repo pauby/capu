@@ -32,7 +32,7 @@ function Get-RemoteFiles {
 
     function name4url($url) {
         if ($FileNameBase) { return $FileNameBase }
-        $res = $url -split '/' | select -Last 1 -Skip $FileNameSkip
+        $res = $url -split '/' | Select-Object -Last 1 -Skip $FileNameSkip
         $res -replace '\.[a-zA-Z]+$'
     }
 
@@ -48,7 +48,7 @@ function Get-RemoteFiles {
 
     if ($Purge) {
         Write-Host 'Purging' $ext
-        rm -Force "$toolsPath\*.$ext" -ea ignore
+        Remove-Item -Force "$toolsPath\*.$ext" -ea ignore
     }
 
     try {
@@ -61,7 +61,7 @@ function Get-RemoteFiles {
 
             Write-Host "Downloading to $file_name -" $Latest.Url32
             $client.DownloadFile($Latest.URL32, $file_path)
-            $global:Latest.Checksum32 = Get-FileHash $file_path | % Hash
+            $global:Latest.Checksum32 = Get-FileHash $file_path | ForEach-Object Hash
         }
 
         if ($Latest.Url64) {
@@ -71,7 +71,7 @@ function Get-RemoteFiles {
 
             Write-Host "Downloading to $file_name -" $Latest.Url64
             $client.DownloadFile($Latest.URL64, $file_path)
-            $global:Latest.Checksum64 = Get-FileHash $file_path | % Hash
+            $global:Latest.Checksum64 = Get-FileHash $file_path | ForEach-Object Hash
         }
     } catch{ throw $_ } finally { $client.Dispose() }
 }
