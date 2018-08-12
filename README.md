@@ -1,6 +1,14 @@
-[![build](https://ci.appveyor.com/api/projects/status/github/majkinetor/au?svg=true)](https://ci.appveyor.com/project/majkinetor/au)   [![chat](https://img.shields.io/badge/gitter-join_chat-1dce73.svg?logo=data%3Aimage%2Fsvg%2Bxml%3Bbase64%2CPD94bWwgdmVyc2lvbj0iMS4wIiBlbmNvZGluZz0iVVRGLTgiPz4NCjxzdmcgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB4PSIwIiB5PSI1IiBmaWxsPSIjZmZmIiB3aWR0aD0iMSIgaGVpZ2h0PSI1Ii8%2BPHJlY3QgeD0iMiIgeT0iNiIgZmlsbD0iI2ZmZiIgd2lkdGg9IjEiIGhlaWdodD0iNyIvPjxyZWN0IHg9IjQiIHk9IjYiIGZpbGw9IiNmZmYiIHdpZHRoPSIxIiBoZWlnaHQ9IjciLz48cmVjdCB4PSI2IiB5PSI2IiBmaWxsPSIjZmZmIiB3aWR0aD0iMSIgaGVpZ2h0PSI0Ii8%2BPC9zdmc%2B&logoWidth=8)](https://gitter.im/chocolatey_au/Lobby)   [![license](https://img.shields.io/badge/license-MIT-blue.svg)](https://raw.githubusercontent.com/majkinetor/au/master/license.txt)
+# CAPU
 
----
+This PowerShell module is a fork of the MIT Licensed version of [AU](https://github.com/majkinetor/au). The purpose of the fork is:
+
+* Refactor the code to follow PowerShell best practices and standards (where there are any);
+* Make the code easier to understand;
+* Make the module easier to use;
+
+Primarily the fork is really for me but other may get some use of it.
+
+The rest of this README contains documentation and links to the original AU repository and these will be replaced over time.
 
 # Chocolatey Automatic Package Updater Module
 
