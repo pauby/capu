@@ -28,3 +28,4 @@ $RECYCLE.BIN/
 output/
 help/
 [0-9].*/
+build/
