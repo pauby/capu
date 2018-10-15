@@ -28,4 +28,6 @@ $RECYCLE.BIN/
 output/
 help/
 [0-9].*/
-build/
+output/
+release/
+build.ps1
