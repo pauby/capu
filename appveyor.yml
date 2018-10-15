@@ -2,7 +2,7 @@
 
 os: WMF 5
 
-version: {build}
+version: '{build}'
 max_jobs: 1
 
 environment:
