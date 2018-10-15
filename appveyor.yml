@@ -34,7 +34,107 @@ artifacts:
 notifications:
 - provider: Email
   to: $(mail_user)
-  on_build_success: false
+  on_build_success: true
   on_build_failure: true
   on_build_status_changed: true
 
+
+
+
+
+
+# See http://www.appveyor.com/docs/appveyor-yml for more options
+
+os: WMF 5
+
+version: {build}
+max_jobs: 1
+
+environment:
+  PSGALLERY_API_KEY:
+#    secure: TO/Slq79myoBRfUTivNSeTkCJAvK5RPE2K52pjR9djE=
+    secure: TO/Slq79myoBRfUTivNSeScz0nRWFlFp0JMiImdmHVZLsSa349qCi98nm29e6uGC
+
+  GITHUB_API_KEY:
+    secure: jmTiAdpCVvSrW0a0kDpC+ucDk4WSnSiNJhpVbsE+FKx1ZwzB189RUmFvnbgkBGBw
+
+  GITHUB_USERNAME:
+    secure: WbMc18DNWPRELk0QTnab0Q==
+
+  appveyor_rdp_password:
+    secure: pky5Pop1AV7LIiB4zFOkhQ==
+
+  notify_email:
+    secure: xxzrryH1TErXFSjxmYszGA==
+
+branches:
+  only:
+  - master
+
+#skip_commits:
+#  message: /updated? readme.*/
+
+only_commits:
+  message: /^Rebuild|^Release/
+
+build: false # disable MSBuild
+
+init:
+#  - ps: iex ((new-object net.webclient).DownloadString('https://raw.githubusercontent.com/appveyor/ci/master/scripts/enable-rdp.ps1'))
+
+install:
+  - git --version
+  - choco --version
+
+  - ps: |
+      [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
+      Set-Location $env:APPVEYOR_BUILD_FOLDER
+      $null = Install-PackageProvider -Name NuGet -MinimumVersion 2.8.5.201 -Force
+      Get-PackageProvider -Name NuGet -ForceBootstrap | Out-Null
+      Set-PSRepository -Name PSGallery -InstallationPOlicy Trusted
+      Install-Module -Name Invoke-Build
+
+      git config --global user.email "pauby@users.noreply.github.com"
+      git config --global user.name "pauby"
+      git config --global core.safecrlf false
+
+      git config --global credential.helper store
+      Add-Content "$env:USERPROFILE\.git-credentials" "https://$($env:GITHUB_API_KEY):x-oauth-basic@github.com`n"
+
+build_script:
+  - ps: |
+      $Verbose = @{}
+      $tasks = 'InstallDependencies', 'Build', 'ValidateTestResults'
+      switch -Regex ($env:APPVEYOR_REPO_COMMIT_MESSAGE) {
+          '!verbose' {
+              $Verbose = @{ Verbose = $true }
+          }
+          '!publish' {
+              git checkout master -q
+              $tasks += 'PublishAll'
+          }
+      }
+
+      Invoke-Build $tasks @Verbose
+
+test_script:
+- ps: |
+      $Verbose = @{}
+      $tasks = 'InstallDependencies', 'Build', 'ValidateTestResults'
+      switch -Regex ($env:APPVEYOR_REPO_COMMIT_MESSAGE) {
+          '!verbose' {
+              $Verbose = @{ Verbose = $true }
+          }
+      }
+
+      Invoke-Build $tasks @Verbose
+
+notifications:
+- provider: Email
+  to: $(notify_email)
+  on_build_success: true
+  on_build_failure: true
+  on_build_status_changed: true
+
+on_finish:
+#  - ps: $blockRdp = $true; iex ((new-object net.webclient).DownloadString('https://raw.githubusercontent.com/appveyor/ci/master/scripts/enable-rdp.ps1'))
