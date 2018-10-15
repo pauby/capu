@@ -1,7 +1,7 @@
 ---
 external help file: capu-help.xml
 Module Name: capu
-online version: https://github.com/pauby/capu/blob/master/docs/Get-AUPackages.md
+online version:
 schema: 2.0.0
 ---
 
@@ -21,7 +21,7 @@ Returns list of directories that have update.ps1 script in them and package name
 doesn't start with the '_' char (unpublished packages, not considered by Update-AUPackages
 function).
 
-Function looks in the directory pointed to by the global variable $au_root or, if not set, 
+Function looks in the directory pointed to by the global variable $au_root or, if not set,
 the current directory.
 
 ## EXAMPLES

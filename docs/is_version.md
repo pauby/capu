@@ -1,7 +1,7 @@
 ---
 external help file: capu-help.xml
 Module Name: capu
-online version: https://github.com/pauby/capu/blob/master/docs/is_version.md
+online version:
 schema: 2.0.0
 ---
 
