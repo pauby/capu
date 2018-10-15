@@ -4,6 +4,10 @@
 * Configured for new build script
 * New folder structure
 
-## v0.1.0 2 June 2018
+## Version 0.1.1 2 June 2018
+
+* Updated version and license
+
+## Version 0.1.0 25 May 2018
 
 * Initial fork
