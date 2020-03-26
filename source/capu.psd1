@@ -12,7 +12,7 @@
 RootModule = 'capu.psm1'
 
 # Version number of this module.
-ModuleVersion = '0.1.0'
+ModuleVersion = '0.1.1'
 
 # Supported PSEditions
 # CompatiblePSEditions = @()
@@ -27,7 +27,7 @@ Author = 'Paul Broadwith'
 CompanyName = 'Paul Broadwith'
 
 # Copyright statement for this module
-Copyright = '(c) 2018-2018 Paul Broadwith, 2016 Miodrag Milić'
+Copyright = '(c) 2018-2020 Paul Broadwith, 2016 Miodrag Milić'
 
 # Description of the functionality provided by this module
 Description = 'Chocolatey Automatic Package Updater'
