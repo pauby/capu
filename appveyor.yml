@@ -42,7 +42,7 @@ install:
   - choco --version
 
   - ps: |
-      [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
+      [Net.ServicePointManager]::SecurityProtocol = [Net.ServicePointManager]::SecurityProtocol -bor [Net.SecurityProtocolType]::Tls12
       Set-Location $env:APPVEYOR_BUILD_FOLDER
       $null = Install-PackageProvider -Name NuGet -MinimumVersion 2.8.5.201 -Force
       Get-PackageProvider -Name NuGet -ForceBootstrap | Out-Null
