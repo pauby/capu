@@ -21,7 +21,7 @@ $p = {
 
 
     if (!(Test-Path $build_dir)) { throw "Build for that version doesn't exist" }
-    if (!(gcm git)) {throw "Git is not installed. Use Chocolatey to install it: cinst git" }
+    if (!(gcm git)) {throw "Git is not installed. Use Chocolatey to install it: choco install git" }
 
     if (Test-Path $PSScriptRoot/vars.ps1) { . $PSScriptRoot/vars.ps1 }
 
